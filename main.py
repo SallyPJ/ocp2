@@ -58,7 +58,10 @@ def get_book_info(url):
     class_name = star_rating_class.get('class')
     review_rating = class_name[1]
 
-
+    # Trouver la catégorie
+    cat = soup.find("ul", class_="breadcrumb")
+    li_tags = cat.find_all("li")
+    category = li_tags[2].text.strip()
 
     # Trouver la table de classe spécifique
     table = soup.find('table', class_="table table-striped")
@@ -66,7 +69,6 @@ def get_book_info(url):
 
     # Initialiser les variables pour stocker les valeurs extraites
     universal_product_code = ""
-    category = ""
     price_excluding_tax = ""
     price_including_tax = ""
     number_available = ""
@@ -75,15 +77,14 @@ def get_book_info(url):
     for i, td in enumerate(td_tags):
         if i == 0:
             universal_product_code = td.text.strip()
-        elif i == 1:
-            category = td.text.strip()
         elif i == 2:
             price_excluding_tax = td.text.strip()
         elif i == 3:
             price_including_tax = td.text.strip()
         elif i == 5:
             number_available = td.text.strip()
-
+        else:
+            pass
 
     # Extraire l'url de l'image
     parent_div = soup.find("div", class_="item active")

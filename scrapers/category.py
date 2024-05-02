@@ -47,7 +47,7 @@ def scrap_cat(books_link_list):
     for url in books_link_list:
         data = main.get_book_info(url)
         all_data.append(data)
-    write_to_csv1(all_data,"cat.csv")
+    write_to_csv1(all_data, "../cat.csv")
 
 #Ecrit les données des livres sur un csv
 def write_to_csv1(data_list, filename):

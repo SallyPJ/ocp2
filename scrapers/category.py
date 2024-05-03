@@ -3,6 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 import urllib.parse
 import csv
+import re
 
 
 

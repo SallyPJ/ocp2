@@ -1,5 +1,5 @@
 
-from scrapers import book_info
+from scrapers import book_info_scraper
 
 url = "https://books.toscrape.com/catalogue/sapiens-a-brief-history-of-humankind_996/index.html"
 

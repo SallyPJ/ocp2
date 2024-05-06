@@ -3,6 +3,10 @@ from bs4 import BeautifulSoup
 import csv
 import re
 from word2number import w2n
+import urllib.request
+import os
+from datetime import datetime
+
 
 
 
@@ -74,14 +78,15 @@ def get_book_info(url):
     # Concaténer les 2 urls
     relative_path = img_tag.get("src")
     base_url = "https://books.toscrape.com/"
-    image_url = base_url + relative_path
+    image_url = urllib.parse.urljoin(base_url, relative_path)
 
     # Extraire la description du produit
     # Trouver la balise <meta> avec l'attribut name="description"
     description = soup.find("meta", attrs={"name": "description"})
     # Extraire le contenu de l'attribut "content"
     product_description_raw = description.get("content")
-    product_description = re.sub(r'[^\x00-\x7F]+', '', product_description_raw)
+    product_description_cleaned = product_description_raw.strip()
+    product_description = re.sub(r'[^\x00-\x7F]+', '', product_description_cleaned)
     #product_description = product_description_raw.encode('ascii', 'ignore').decode("utf-8")
 
     page_info_dict = {
@@ -110,3 +115,48 @@ def write_to_csv(data, filename):
         writer.writerow(data)
 
 
+def extract_book_image(data):
+    image_link = data["image_url"]
+    file_name_raw = data["title"]
+    category = data["category"]
+    file_name_re = re.sub(r'[\\/*?:"<>|]', '_', file_name_raw)
+    if len(file_name_re) > 60:
+        file_name = file_name_re[:60] + "..."
+    else:
+        file_name = file_name_re
+    print(file_name)
+    print(image_link)
+   # if not os.path.exists(category):
+        #os.makedirs(category)
+
+    # Chemin absolu vers le répertoire du projet
+    project_directory = os.path.dirname(os.path.abspath(__file__))
+
+    # Chemin absolu vers le dossier "webscraping" dans le répertoire du projet
+    webscraping_directory = os.path.join(project_directory, "webscraping")
+
+    images_folder = os.path.join(webscraping_directory, "images")
+    # Créer le dossier "images" s'il n'existe pas déjà
+    if not os.path.exists(images_folder):
+        os.makedirs(images_folder)
+
+    category_folder = os.path.join(images_folder, category)
+    if not os.path.exists(category_folder):
+        os.makedirs(category_folder)
+
+
+
+    request = urllib.request.urlopen(image_link)
+    img = request.read()
+    print(category)
+    print(file_name)
+    chemin_complet = os.path.join(category_folder, file_name + '.jpg')
+    print(chemin_complet)
+    with open(chemin_complet, 'wb') as f:
+        f.write(img)
+
+
+url= "https://books.toscrape.com/catalogue/sapiens-a-brief-history-of-humankind_996/index.html"
+
+data = get_book_info(url)
+extract_book_image(data)

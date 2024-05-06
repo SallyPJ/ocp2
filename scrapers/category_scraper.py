@@ -1,4 +1,4 @@
-from book_info import get_book_info, write_to_csv
+from book_info_scraper import get_book_info, write_to_csv
 import requests
 from bs4 import BeautifulSoup
 import urllib.parse

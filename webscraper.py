@@ -7,7 +7,7 @@ import urllib.parse
 import csv
 import os
 
-website_url = "https://books.toscrape.com/index.html"
+
 category_urls_dict = {}
 
 
@@ -360,9 +360,6 @@ def write_to_csv(data_list, filename):
             # Write the data to the CSV file
             writer.writerow(data)
 
-category_urls_dict = retrieve_category_url(website_url)
-extract_all_page_urls_by_category(category_urls_dict)
-retrieve_book_urls(category_urls_dict)
-scrap_books_by_category(category_urls_dict)
+
 
 

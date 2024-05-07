@@ -157,6 +157,7 @@ def get_category_info(category_url):
             books_href = book.find("h3").find("a").get("href")
             books_url = urllib.parse.urljoin(category_url, books_href)
             book_info = get_book_info(books_url)
+            # Write a row for each book
             writer.writerow(book_info)
 
             image_url = book_info["image_url"]
@@ -167,6 +168,8 @@ def get_category_info(category_url):
                 image_title = image_title[:60] + "..."
             else:
                 image_title
+
+            # Get and download image
             response = requests.get(image_url)
             with open("webscraping_data/" + category_name + "/Images/" + image_title + ".jpg", "wb") as f:
                 f.write(response.content)

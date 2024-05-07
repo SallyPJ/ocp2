@@ -2,6 +2,8 @@
 import webscraper
 
 
+website_url = "https://books.toscrape.com/index.html"
+
 
 if __name__ == '__main__':
     category_urls_dict = webscraper.retrieve_category_url(website_url)

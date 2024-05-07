@@ -2,13 +2,10 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from word2number import w2n
-from urllib.request import urlopen
 import urllib.parse
 import csv
 import os
 
-
-category_urls_dict = {}
 
 
 def get_book_info(book_url):
@@ -38,15 +35,15 @@ def get_book_info(book_url):
 
     # Extract the title of the book
     product_main_div = soup.find("div", class_="col-sm-6 product_main")
-    title_tag = product_main_div.find("h1")
-    title = title_tag.get_text()
+    title_raw = product_main_div.find("h1").get_text()
+    title = re.sub(r'[\\/*?:"<>|]', " ", title_raw)
 
     # Extract the review rating of the book
     product_info_div = soup.find('div', class_='col-sm-6 product_main')
     rating_paragraph = product_info_div.find('p', class_= lambda x: x and x.startswith('star-rating'))
     rating_class_name = rating_paragraph.get('class')
     rating_letters = rating_class_name[1]
-    review_rating = (w2n.word_to_num(rating_letters))
+    review_rating = w2n.word_to_num(rating_letters)
 
     # Extract the category of the book
     breadcrumb_ul = soup.find("ul", class_="breadcrumb")
@@ -109,53 +106,74 @@ def get_book_info(book_url):
     return product_data
 
 
-def extract_book_image(product_data):
+def get_category_info(category_url):
     """
-    Downloads and saves the image associated to the book.
+    Retrieves information about books in a given category.
 
     Args:
-        product_data (dict): A dictionary containing information about the product.
+        category_url (str): The URL of the category page.
+
     """
-    # Extract data from the dictionnary
-    image_link = product_data["image_url"]
-    file_name_raw = product_data["title"]
-    category = product_data["category"]
+    response = requests.get(category_url)
+    soup = BeautifulSoup(response.text, "html.parser")
+    category_name = soup.find("h1").string
 
-    # Replace special characters in the title string
-    file_name_re = re.sub(r'[\\/*?:"<>|]', '_', file_name_raw)
+    # Create a path to the "webscraping" folder within the project directory
+    folders = os.path.join("webscraping_data",category_name,"images")
 
-    # Reduce title length
-    if len(file_name_re) > 60:
-        file_name = file_name_re[:60] + "..."
-    else:
-        file_name = file_name_re
-    print(file_name)
-    print(image_link)
+    # Creating the folder if it doesn't already exist
+    os.makedirs(folders, exist_ok=True)
 
-    # Create image/category directory
-    script_directory = os.path.dirname(os.path.abspath(__file__))
-    webscraping_directory = os.path.join(script_directory, "webscraping_booktoscrape")
-    images_folder = os.path.join(webscraping_directory, "images")
-    category_folder = os.path.join(images_folder, category)
-    if not os.path.exists(category_folder):
-        os.makedirs(category_folder)
+    # Open the CSV file in write mode with UTF-8 encoding
+    with open("webscraping_data/" + category_name + "/" + category_name + ".csv", "w", newline="", encoding="utf-8") as csvfile:
+        # Define the field names for the CSV header
+        fieldnames = ["product_page_url", "universal_product_code", "title", "price_including_tax",
+                      "price_excluding_tax", "number_available", "product_description", "category",
+                      "review_rating", "image_url"]
+        # Create a CSV writer object with the defined field names
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        # Write the CSV header
+        writer.writeheader()
 
-    try:
-        with urlopen(image_link) as response :
-            # Open a connection to the image URL and read its content
-            image = response.read()
-            # Define the complete path where the image will be saved
-            image_path = os.path.join(category_folder, file_name + '.jpg')
-            print(image_path)
-            with open(image_path, "wb") as f:
-                f.write(image)
+        # Scrape the book classes of the page
+        books_class = soup.find_all("article", class_="product_pod")
 
-    except Exception as e :
-        print(f"Error downloading image: {e}")
+        # Find the next button to navigate through pages
+        next_button = soup.find("li", class_="next")
 
-def retrieve_category_url(website_url):
+        while next_button:
+            # Extract the URL of the next page
+            next_partial_url = next_button.find("a").get("href")
+            next_full_url = urllib.parse.urljoin(category_url, next_partial_url)
+
+            # Send a request to fetch the next page and parse the HTML
+            response = requests.get(next_full_url)
+            soup = BeautifulSoup(response.text, "html.parser")
+            books_class.extend(soup.find_all("article", class_="product_pod"))
+            next_button = soup.find("li", class_="next")
+
+        for book in books_class:
+            # Get href to recreate an url for each book
+            books_href = book.find("h3").find("a").get("href")
+            books_url = urllib.parse.urljoin(category_url, books_href)
+            book_info = get_book_info(books_url)
+            writer.writerow(book_info)
+
+            image_url = book_info["image_url"]
+            image_title = book_info["title"]
+
+            # Reduce title length
+            if len(image_title) > 60:
+                image_title = image_title[:60] + "..."
+            else:
+                image_title
+            response = requests.get(image_url)
+            with open("webscraping_data/" + category_name + "/Images/" + image_title + ".jpg", "wb") as f:
+                f.write(response.content)
+
+def get_category_urls(website_url):
     """
-    Retrieve category names and URLs from the main page.
+    Retrieve category URLs from the main page nav bar.
 
     Args:
         website_url (str): the url of book_toscrape main page.
@@ -167,198 +185,40 @@ def retrieve_category_url(website_url):
     # Find the navigation list element containing category links
     navigation_list = soup.find("ul", class_="nav nav-list")
     list_items = navigation_list.find_all("li")
-
-    # Initialize a dictionary to store category names and URLs
-    result ={"category_name": [],"category_url": []}
-
-    # Base url to concatenate with category href
-    cat_base_url = "https://books.toscrape.com/"
+    # Delete the "Book" index
+    del list_items[0]
 
     for list_item in list_items:
         # Extract category main page url
-        category_href_index = list_item.find("a").get("href")
-        category_partial_url = category_href_index.replace("index.html", "")
-
-        # Extract the category name and append it to the list
-        category_name = list_item.find("a").text.strip()
-        result["category_name"].append(category_name)
+        category_partial_url = list_item.find("a").get("href")
 
         # Construct the category page URL and append it to the list
-        category_url = urllib.parse.urljoin(cat_base_url, category_partial_url)
-        result["category_url"].append(category_url)
-
-    # Remove the first element from both lists (header)
-    del result["category_name"][0]
-    del result["category_url"][0]
-
-    # Create a dictionary entry with category names as keys and URLs as values
-    for category_name, category_url in zip(result["category_name"], result["category_url"]):
-        # Create dictionary containing a sub-key "category_main_url" with the URL as the value.
-        category_urls_dict[category_name] = {"category_main_url": category_url}
-    print(category_urls_dict)
-    return category_urls_dict
-
-
-def extract_all_page_urls_by_category(category_urls_dict):
-    """
-    Extract all page URLs by category and add them to a subdictionnary in category_urls_dict.
-
-    Args:
-        category_urls_dict (dict): the dictionnary which contains main page url for each category
-
-    Returns :
-        category_urls_dict["urls_list_by_category"] (dict) : A subdictionnary with url pages listed by category
-    """
-
-    # Iterate through each category and its data in the dictionary
-    for category, category_data in category_urls_dict.items():
-        # Extract the main URL for each category
-        category_main_url = category_data["category_main_url"]
-        print(category_main_url)
-
-        # Send a request to fetch the category main URL and parse the HTML
-        response = requests.get(category_main_url)
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        # Initialize a list to store URLs per category
-        urls_list_by_category = []
-        urls_list_by_category.append(category_main_url)
-
-        # Find the next button to navigate through pages
-        next_button = soup.find("li", class_="next")
-        while next_button:
-            # Extract the URL of the next page
-            next_partial_url = next_button.find("a").get("href")
-            next_full_url = urllib.parse.urljoin(category_main_url, next_partial_url)
-            urls_list_by_category.append(next_full_url)
-
-            # Send a request to fetch the next page and parse the HTML
-            response = requests.get(next_full_url)
-            soup = BeautifulSoup(response.text, "html.parser")
-            next_button = soup.find("li", class_="next")
-
-        # If there's no next button, print a message
-        if not next_button:
-            print("Il n'y a plus de bouton 'next'.")
-        print(urls_list_by_category)
-
-        # Add the list of url pages of a category to a dedicated subdictionnary in category_urls_dict
-        category_urls_dict.setdefault(category,{})["urls_list_by_category"] = urls_list_by_category
-
-
-    print(category_urls_dict)
-
-    return category_urls_dict
-
-
-def retrieve_book_urls(category_urls_dict):
-    """
-    Extract all the books url from each page of a category.
-
-    Args:
-        category_urls_dict (dict): The dictionnary which contains all pages urls for each category
-
-    """
-    for category,category_data in category_urls_dict.items():
-        # Extract the URLs list for the current category
-        category_urls = category_data["urls_list_by_category"]
-        books_urls = []
-
-        #Base URL for for books to concatenate with books href
-        book_base_url = "https://books.toscrape.com/catalogue/"
-
-        # Iterate through each URL in the category URLs list
-        for url in category_urls:
-            # Fetch the webpage content for the current URL
-            response = requests.get(url)
-            soup = BeautifulSoup(response.text, "html.parser")
-
-            # Find all articles with class "product_pod"
-            product_articles = soup.find_all("article", class_="product_pod")
-            for article in product_articles:
-                book_h3_tag = article.find("h3")
-                book_link = book_h3_tag.find("a").get("href")
-
-                # Split the URL by '/' to extract the partial URL
-                parts = book_link.split('/')
-                book_partial_url = parts[-2] + '/' + parts[-1]
-
-                # Join the partial URL with the base URL to get the full URL
-                book_full_url = urllib.parse.urljoin(book_base_url, book_partial_url)
-                books_urls.append(book_full_url)
-
-        # Assign the list of books URLs to the corresponding category data in the dictionnary
-        category_data["books_url"] = books_urls
-        print(category_data["books_url"])
+        category_url = urllib.parse.urljoin(website_url, category_partial_url)
+        get_category_info(category_url)
 
 
 
 
-def scrap_books_by_category(category_urls_dict):
-    """
-    Extract all the books data by category, print csv list by category and download images for each books.
-
-    Args:
-        category_urls_dict (dict): The dictionnary which contains all books urls for each category
-
-    """
-    # Obtaining the absolute path to the project directory
-    project_directory = os.path.dirname(os.path.abspath(__file__))
-
-    # Obtaining the absolute path to the "webscraping" folder within the project directory
-    folder_name = os.path.join(project_directory, "webscraping_booktoscrape")
-
-    # Creating the folder if it doesn't already exist
-    os.makedirs(folder_name, exist_ok=True)
-
-    # Iterating through each category and its book url list
-    for category,category_data in category_urls_dict.items():
-        # Retrieving the list of books URLs for the current category
-        list_of_books_url = category_data["books_url"]
-
-        # Initializing an empty list to store all book data for the current category
-        all_data = []
-
-        # Iterating through each book URL in the list
-        for book in list_of_books_url:
-            # Obtaining data for the current book
-            data = get_book_info(book)
-
-            # Extracting and downloading the book image
-            extract_book_image(data)
-
-            # Appending the book data to the list of all data for the current category
-            all_data.append(data)
-
-        # Constructing the filename for the CSV file based on the category
-        csv_filename = os.path.join(folder_name, f"{category}.csv")
-
-        # Writing the collected book data to a CSV file
-        write_to_csv(all_data, csv_filename)
 
 
-def write_to_csv(data_list, filename):
-    """
-    Write data to a CSV file.
 
-    Args:
-        data_list (list): List of dictionaries containing the data to be written.
-        filename (str): The name of the CSV file to write to.
-    """
-    # Open the CSV file in write mode with UTF-8 encoding
-    with open(filename, "w", newline="", encoding="utf-8") as csvfile:
-        # Define the field names for the CSV header
-        fieldnames = ["product_page_url", "universal_product_code", "title", "price_including_tax",
-                      "price_excluding_tax", "number_available", "product_description", "category",
-                      "review_rating", "image_url"]
-        # Create a CSV writer object with the defined field names
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        # Write the CSV header
-        writer.writeheader()
-        # Iterate through each dictionary in the data list
-        for data in data_list:
-            # Write the data to the CSV file
-            writer.writerow(data)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

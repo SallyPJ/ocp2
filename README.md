@@ -63,9 +63,22 @@ output_folder/
 │
 └── ...
 ```
-
+- Example of extracted data
+```bash
+{'product_page_url': 'https://books.toscrape.com/catalogue/see-america-a-celebration-of-our-national-parks-treasured-sites_732/index.html',
+'universal_product_code': 'f9705c362f070608',
+'title': 'See America_ A Celebration of Our National Parks & Treasured Sites',
+'price_including_tax': '48.87',
+'price_excluding_tax': '48.87',
+'number_available': 14,
+'product_description': "To coincide with the 2016 centennial anniversary of the National Parks Service, the Creative Action Network has partnered with the National Parks Conservation Association to revive and reimagine the legacy of WPA travel posters. Artists from all over the world have participated in the creation of this new, crowdsourced collection of See America posters for a modern era. Fe To coincide with the 2016 centennial anniversary of the National Parks Service, the Creative Action Network has partnered with the National Parks Conservation Association to revive and reimagine the legacy of WPA travel posters. Artists from all over the world have participated in the creation of this new, crowdsourced collection of See America posters for a modern era. Featuring artwork for 75 national parks and monuments across all 50 states, this engaging keepsake volume celebrates the full range of our nation's landmarks and treasured wilderness. ...more",  
+'category': 'Travel',
+'review_rating': 3,
+'image_url': 'https://books.toscrape.com/media/cache/c7/1a/c71a85dbf8c2dbc75cb271026618477c.jpg'}
+```
 - Example of book data listed in a CSV file
-![image](https://github.com/SallyPJ/ocp2/assets/166709267/31b3d871-27c8-4932-b1d9-a81f8d5ca7b7)
+![image](https://github.com/SallyPJ/ocp2/assets/166709267/683a50e5-fdbb-4334-b112-c1df30dc93f4)
+
 
 ## Licence ##
 MIT License

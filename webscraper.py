@@ -7,7 +7,6 @@ import csv
 import os
 
 
-
 def get_book_info(book_url):
     """
     Retrieves information about a book from the given URL.
@@ -34,25 +33,24 @@ def get_book_info(book_url):
     product_page_url = response.url
 
     # Extract the title of the book
-    product_main_div = soup.find("div", class_="col-sm-6 product_main")
-    title_raw = product_main_div.find("h1").get_text()
-    title = re.sub(r'[\\/*?:"<>|]', " ", title_raw)
+    title_raw = soup.find("div", class_="col-sm-6 product_main").find("h1").get_text()
+
+    # Replace non ASCII characters by an '
+    title_ascii = re.sub(r"[^\x00-\x7F]+", "'", title_raw)
+
+    # Replace special characters by an _
+    title = re.sub(r'[\\/*?:"<>|]', "_", title_ascii)
 
     # Extract the review rating of the book
-    product_info_div = soup.find('div', class_='col-sm-6 product_main')
-    rating_paragraph = product_info_div.find('p', class_= lambda x: x and x.startswith('star-rating'))
-    rating_class_name = rating_paragraph.get('class')
-    rating_letters = rating_class_name[1]
-    review_rating = w2n.word_to_num(rating_letters)
+    rating_text = soup.find("div", class_="col-sm-6 product_main").find("p", class_=lambda x: x and x.startswith("star-rating")).get("class")[1]
+    review_rating = w2n.word_to_num(rating_text)
 
     # Extract the category of the book
-    breadcrumb_ul = soup.find("ul", class_="breadcrumb")
-    breadcrumb_list_items = breadcrumb_ul.find_all("li")
-    category = breadcrumb_list_items[2].text.strip()
+    category = soup.find("ul", class_="breadcrumb").find_all("li")[2].text.strip()
 
     # Extract row content from the table
-    table = soup.find('table', class_="table table-striped")
-    table_data_tags = table.find_all('td')
+    table = soup.find("table", class_="table table-striped")
+    table_data_tags = table.find_all("td")
 
     # Initialize variables to store extracted values
     universal_product_code = ""
@@ -60,34 +58,28 @@ def get_book_info(book_url):
     price_including_tax = ""
     number_available = ""
 
-    # Extract data from the selected <td> tags and assign them to variables
+    # Extract data (book code, price and availability) from the selected <td> tags and assign them to variables
     for i, td in enumerate(table_data_tags):
+        text = td.text.strip()
         if i == 0:
-            universal_product_code = td.text.strip()
+            universal_product_code = text
         elif i == 2:
-            price_excluding_tax_text = td.text.strip()
-            price_excluding_tax = price_excluding_tax_text.split("£")[1]
+            price_excluding_tax = text.split("£")[1]
         elif i == 3:
-            price_including_tax_text = td.text.strip()
-            price_including_tax = price_including_tax_text.split("£")[1]
+            price_including_tax = text.split("£")[1]
         elif i == 5:
-            number_available_text = td.text.strip()
-            number_available = int(re.findall(r"\d+", number_available_text )[0])
+            number_available = int(re.findall(r"\d+", text)[0])
         else:
             pass
 
-    # Extract the partial URL of the book image
-    parent_div = soup.find("div", class_="item active")
-    img_tag = parent_div.find("img")
-    relative_path = img_tag.get("src")
-    website_base_url = "https://books.toscrape.com/"
-    image_url = urllib.parse.urljoin(website_base_url, relative_path)
+    # Extract the partial URL of the book image and combine it with the website base url
+    image_partial_url = soup.find("div", class_="item active").find("img").get("src")
+    image_url = urllib.parse.urljoin("https://books.toscrape.com/", image_partial_url)
 
     # Extract the description of the book
-    description = soup.find("meta", attrs={"name": "description"})
-    product_description_raw = description.get("content")
-    product_description_cleaned = product_description_raw.strip()
-    product_description = re.sub(r'[^\x00-\x7F]+', '', product_description_cleaned)
+    product_description_raw = soup.find("meta", attrs={"name": "description"}).get("content").strip()
+    # Replace non ASCII characters
+    product_description = re.sub(r'[^\x00-\x7F]+', '_', product_description_raw)
 
     # Create a dictionary containing information about the book
     product_data = {
@@ -132,6 +124,7 @@ def get_category_info(category_url):
                       "review_rating", "image_url"]
         # Create a CSV writer object with the defined field names
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
         # Write the CSV header
         writer.writeheader()
 
@@ -157,6 +150,7 @@ def get_category_info(category_url):
             books_href = book.find("h3").find("a").get("href")
             books_url = urllib.parse.urljoin(category_url, books_href)
             book_info = get_book_info(books_url)
+
             # Write a row for each book
             writer.writerow(book_info)
 
@@ -174,6 +168,7 @@ def get_category_info(category_url):
             with open("webscraping_data/" + category_name + "/Images/" + image_title + ".jpg", "wb") as f:
                 f.write(response.content)
 
+
 def get_category_urls(website_url):
     """
     Retrieve category URLs from the main page nav bar.
@@ -181,22 +176,24 @@ def get_category_urls(website_url):
     Args:
         website_url (str): the url of book_toscrape main page.
     """
-    # Retrieve the content of the page and parse the HTLM
+    # Retrieve the content of the page and parse the HTML page
     response = requests.get(website_url)
     soup = BeautifulSoup(response.text, "html.parser")
 
     # Find the navigation list element containing category links
-    navigation_list = soup.find("ul", class_="nav nav-list")
-    list_items = navigation_list.find_all("li")
-    # Delete the "Book" index
-    del list_items[0]
+    navigation_list = soup.find("ul", class_="nav nav-list").find_all("li")
 
-    for list_item in list_items:
+    # Delete the "Book" category
+    del navigation_list[0]
+
+    # Concatenate website URL and retrieved category url
+    for list_item in navigation_list:
         # Extract category main page url
         category_partial_url = list_item.find("a").get("href")
 
         # Construct the category page URL and append it to the list
         category_url = urllib.parse.urljoin(website_url, category_partial_url)
+
         get_category_info(category_url)
 
 

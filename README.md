@@ -18,20 +18,25 @@ Before installing the program, ensure that you have Python installed on your sys
 ### 2. Clone the project
 To get started, you'll need to clone the project repository onto your local machine. Follow these steps:
 - Open Git Bash or your preferred terminal application.
+- Navigate to the directory where you want to clone the project using the cd (change directory) command. 
 - Run the following command to clone the repository:
  ```bash
   git clone https://github.com/SallyPJ/ocp2.git
 ```
 ### 3. Create and activate a virtual environment in the project folder
  In the project folder, create the virtual environment.  
- '''bash
+ ```bash
 python -m venv env
-'''
+```
 Then activate the project environment.  
-Windows
-'''bash
-env\Scripts\activate 
-'''
+Windows(Powershell)
+```bash
+source env\scripts\activate 
+```
+Linux/Mac
+```bash
+source env/bin/activate
+```
 ### 4. Install dependencies
 The program relies on several Python libraries which can be installed using pip. Navigate to the directory containing the project files in your terminal or command prompt and run the following command:
 

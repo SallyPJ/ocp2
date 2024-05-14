@@ -9,7 +9,7 @@ The script generates CSV files for each category, containing detailed informatio
 - **word2number**  
 ## Features
 - Collect the URLs of each category :  **get_category_urls(website_url)**
-- Retrieve information about books within a given category, write a csv file for each category and download the image associated with each book : **get_category_info(category_url)**
+- Retrieve information about books within a given category, write a csv file for each category and download the image associated with each book : **scrape_books_and_images(category_url)**
 - Extract data from a book page such as product page URL, title, review rating, category, universal product code, price, availability, product description, and image URL : **get_book_info(book_url)**
 
 ## Installation ##

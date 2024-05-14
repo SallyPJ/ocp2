@@ -98,7 +98,7 @@ def get_book_info(book_url):
     return product_data
 
 
-def get_category_info(category_url):
+def scrape_books_and_images(category_url):
     """
     Retrieves information about books in a given category.
 
@@ -194,7 +194,7 @@ def get_category_urls(website_url):
         # Construct the category page URL and append it to the list
         category_url = urllib.parse.urljoin(website_url, category_partial_url)
 
-        get_category_info(category_url)
+        scrape_books_and_images(category_url)
 
 
 

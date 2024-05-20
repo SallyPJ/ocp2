@@ -42,7 +42,11 @@ def get_book_info(book_url):
     title = re.sub(r'[\\/*?:"<>|]', "_", title_ascii)
 
     # Extract the review rating of the book
-    rating_text = soup.find("div", class_="col-sm-6 product_main").find("p", class_=lambda x: x and x.startswith("star-rating")).get("class")[1]
+    rating_text = (
+        soup.find("div", class_="col-sm-6 product_main")
+        .find("p", class_=lambda x: x and x.startswith("star-rating"))
+        .get("class")[1]
+    )
     review_rating = w2n.word_to_num(rating_text)
 
     # Extract the category of the book
@@ -111,13 +115,18 @@ def scrape_books_and_images(category_url):
     category_name = soup.find("h1").string
 
     # Create a path to the "webscraping" folder within the project directory
-    folders = os.path.join("webscraping_data",category_name,"images")
+    folders = os.path.join("webscraping_data", category_name, "images")
 
     # Creating the folder if it doesn't already exist
     os.makedirs(folders, exist_ok=True)
 
     # Open the CSV file in write mode with UTF-8 encoding
-    with open("webscraping_data/" + category_name + "/" + category_name + ".csv", "w", newline="", encoding="utf-8") as csvfile:
+    with open(
+            "webscraping_data/" + category_name + "/" + category_name + ".csv",
+            "w",
+            newline="",
+            encoding="utf-8"
+    ) as csvfile:
         # Define the field names for the CSV header
         fieldnames = ["product_page_url", "universal_product_code", "title", "price_including_tax",
                       "price_excluding_tax", "number_available", "product_description", "category",
@@ -160,12 +169,10 @@ def scrape_books_and_images(category_url):
             # Reduce title length
             if len(image_title) > 60:
                 image_title = image_title[:60] + "..."
-            else:
-                image_title
 
             # Get and download image
             response = requests.get(image_url)
-            with open("webscraping_data/" + category_name + "/Images/" + image_title + ".jpg", "wb") as f:
+            with open("webscraping_data/" + category_name + "/images/" + image_title + ".jpg", "wb") as f:
                 f.write(response.content)
 
 
@@ -174,7 +181,7 @@ def get_category_urls(website_url):
     Retrieve category URLs from the main page nav bar.
 
     Args:
-        website_url (str): the url of book_toscrape main page.
+        website_url (str): the url of the website main page.
     """
     # Retrieve the content of the page and parse the HTML page
     response = requests.get(website_url)
@@ -195,31 +202,3 @@ def get_category_urls(website_url):
         category_url = urllib.parse.urljoin(website_url, category_partial_url)
 
         scrape_books_and_images(category_url)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

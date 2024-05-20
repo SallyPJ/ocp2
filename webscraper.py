@@ -12,6 +12,7 @@ def get_book_info(session, book_url):
     Retrieves information about a book from the given URL.
 
     Args:
+        session (requests.Session): The session object to use for making requests.
         book_url (str): The URL of the book page.
 
     Returns:
@@ -35,11 +36,8 @@ def get_book_info(session, book_url):
     # Extract the title of the book
     title_raw = soup.find("div", class_="col-sm-6 product_main").find("h1").get_text()
 
-    # Replace non ASCII characters by an '
-    title_ascii = re.sub(r"[^\x00-\x7F]+", "'", title_raw)
-
-    # Replace special characters by an _
-    title = re.sub(r'[\\/*?:"<>|]', "_", title_ascii)
+    # Replace non ASCII characters by an underscore
+    title = re.sub(r"[^\x00-\x7F]+", "_", title_raw)
 
     # Extract the review rating of the book
     rating_text = (
@@ -107,6 +105,7 @@ def scrape_books_and_images(session, category_url):
     Retrieves information about books in a given category.
 
     Args:
+        session (requests.Session): The session object to use for making requests.
         category_url (str): The URL of the category page.
 
     """
@@ -163,9 +162,12 @@ def scrape_books_and_images(session, category_url):
             # Write a row for each book
             writer.writerow(book_info)
 
-            # Get book title and image url
+            # Get book title, upc and image url
             image_url = book_info["image_url"]
-            image_title = book_info["title"]
+            image_upc = book_info["universal_product_code"]
+            image_title_raw = book_info["title"]
+            # Replace special characters in the title by an underscore
+            image_title = re.sub(r'[\\/*?:"<>|]', "_", image_title_raw)
 
             # Reduce title length
             if len(image_title) > 60:
@@ -173,7 +175,10 @@ def scrape_books_and_images(session, category_url):
 
             # Get and download image
             response = session.get(image_url)
-            with open("webscraping_data/" + category_name + "/images/" + image_title + ".jpg", "wb") as f:
+            with open(
+                    "webscraping_data/" + category_name + "/images/" + image_upc + "_" + image_title + ".jpg",
+                    "wb"
+            ) as f:
                 f.write(response.content)
 
 

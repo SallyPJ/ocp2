@@ -7,7 +7,7 @@ import csv
 import os
 
 
-def get_book_info(book_url):
+def get_book_info(session, book_url):
     """
     Retrieves information about a book from the given URL.
 
@@ -20,7 +20,7 @@ def get_book_info(book_url):
 
     # Retrieve the content of the page and check if the link is active
     try:
-        response = requests.get(book_url)
+        response = session.get(book_url)
         response.raise_for_status()  # Check for HTTP errors
     except requests.RequestException as e:
         print(f"Error fetching URL: {e}")
@@ -102,7 +102,7 @@ def get_book_info(book_url):
     return product_data
 
 
-def scrape_books_and_images(category_url):
+def scrape_books_and_images(session, category_url):
     """
     Retrieves information about books in a given category.
 
@@ -110,7 +110,7 @@ def scrape_books_and_images(category_url):
         category_url (str): The URL of the category page.
 
     """
-    response = requests.get(category_url)
+    response = session.get(category_url)
     soup = BeautifulSoup(response.text, "html.parser")
     category_name = soup.find("h1").string
 
@@ -149,7 +149,7 @@ def scrape_books_and_images(category_url):
             next_full_url = urllib.parse.urljoin(category_url, next_partial_url)
 
             # Send a request to fetch the next page and parse the HTML
-            response = requests.get(next_full_url)
+            response = session.get(next_full_url)
             soup = BeautifulSoup(response.text, "html.parser")
             books_class.extend(soup.find_all("article", class_="product_pod"))
             next_button = soup.find("li", class_="next")
@@ -158,11 +158,12 @@ def scrape_books_and_images(category_url):
             # Get href to recreate an url for each book
             books_href = book.find("h3").find("a").get("href")
             books_url = urllib.parse.urljoin(category_url, books_href)
-            book_info = get_book_info(books_url)
+            book_info = get_book_info(session, books_url)
 
             # Write a row for each book
             writer.writerow(book_info)
 
+            # Get book title and image url
             image_url = book_info["image_url"]
             image_title = book_info["title"]
 
@@ -171,7 +172,7 @@ def scrape_books_and_images(category_url):
                 image_title = image_title[:60] + "..."
 
             # Get and download image
-            response = requests.get(image_url)
+            response = session.get(image_url)
             with open("webscraping_data/" + category_name + "/images/" + image_title + ".jpg", "wb") as f:
                 f.write(response.content)
 
@@ -183,8 +184,11 @@ def get_category_urls(website_url):
     Args:
         website_url (str): the url of the website main page.
     """
+    # Create a session object
+    session = requests.session()
+
     # Retrieve the content of the page and parse the HTML page
-    response = requests.get(website_url)
+    response = session.get(website_url)
     soup = BeautifulSoup(response.text, "html.parser")
 
     # Find the navigation list element containing category links
@@ -201,4 +205,4 @@ def get_category_urls(website_url):
         # Construct the category page URL and append it to the list
         category_url = urllib.parse.urljoin(website_url, category_partial_url)
 
-        scrape_books_and_images(category_url)
+        scrape_books_and_images(session, category_url)

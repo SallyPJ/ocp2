@@ -1,5 +1,4 @@
 env/
-*.csv
 .idea/
-.git/
 webscraping_data/
+__pycache__
